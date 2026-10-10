@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NutriPlan — Generador de planes nutricionales</title>
+<meta name="description" content="Generador de planes nutricionales con cálculo, PDF y gestión de pacientes.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3F6B52">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NutriPlan">
+<style>
+  :root{
+    --bg:#F7F5EF;
+    --surface:#FFFFFF;
+    --text:#232320;
+    --muted:#6B675F;
+    --accent:#3F6B52;
+    --accent-ink:#FFFFFF;
+    --accent-2:#B5651D;
+    --line:#DEDAD0;
+    --danger:#A6402F;
+    --radius:4px;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1B1B18; --surface:#242420; --text:#EDEAE2; --muted:#A9A499;
+      --accent:#6FA383; --accent-ink:#0E1410; --accent-2:#D99A55; --line:#3A392F; --danger:#E2887A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1B1B18; --surface:#242420; --text:#EDEAE2; --muted:#A9A499;
+    --accent:#6FA383; --accent-ink:#0E1410; --accent-2:#D99A55; --line:#3A392F; --danger:#E2887A;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45; min-height:100%;
+  }
+  .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum";}
+  a{color:var(--accent);}
+  header.app{
+    position:sticky; top:0; z-index:10; background:var(--bg);
+    padding:env(safe-area-inset-top,0px) 0 0 0;
+    border-bottom:1px solid var(--line);
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:0 18px;}
+  .brand{display:flex; align-items:baseline; justify-content:space-between; padding:16px 0 10px;}
+  .brand h1{font-size:19px; margin:0; font-weight:700; letter-spacing:-.01em;}
+  .brand small{color:var(--muted); font-size:12px;}
+  nav.tabs{display:flex; gap:22px; padding-bottom:0; overflow-x:auto;}
+  nav.tabs button{
+    background:none; border:none; font:inherit; font-size:14px; color:var(--muted);
+    padding:8px 2px 10px; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;
+  }
+  nav.tabs button.active{color:var(--text); border-bottom-color:var(--accent); font-weight:600;}
+  main{max-width:920px; margin:0 auto; padding:22px 18px 80px;}
+  section.tab{display:none;}
+  section.tab.active{display:block;}
+  h2{font-size:16px; margin:0 0 4px; font-weight:700;}
+  h3{font-size:14px; margin:0 0 8px; font-weight:700;}
+  p.hint{color:var(--muted); font-size:13px; margin:2px 0 16px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
+  label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;}
+  input, select, textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface); color:var(--text); font:inherit; font-size:14px;
+  }
+  input[type=color]{padding:3px; height:38px;}
+  input[type=checkbox]{width:auto;}
+  .field{margin-bottom:14px;}
+  fieldset{border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin:0 0 18px;}
+  legend{padding:0 6px; font-size:12.5px; color:var(--muted); font-weight:600;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .chip-group{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    border:1px solid var(--line); border-radius:20px; padding:6px 12px; font-size:13px;
+    cursor:pointer; background:var(--surface); color:var(--text); user-select:none;
+  }
+  .chip input{display:none;}
+  .chip.checked{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  button.btn{
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:var(--radius);
+    padding:11px 18px; font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  button.btn.secondary{background:var(--surface); color:var(--text); border:1px solid var(--line);}
+  button.btn.small{padding:6px 11px; font-size:12.5px; font-weight:500;}
+  button.btn.danger{background:none; color:var(--danger); border:1px solid var(--danger);}
+  button.btn:disabled{opacity:.5; cursor:default;}
+  hr{border:none; border-top:1px solid var(--line); margin:22px 0;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th,td{text-align:left; padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{color:var(--muted); font-weight:600; font-size:12px;}
+  .day{border:1px solid var(--line); border-radius:var(--radius); margin-bottom:16px; overflow:hidden;}
+  .day-head{
+    display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--surface);
+    border-bottom:1px solid var(--line);
+  }
+  .day-num{font-size:22px; font-weight:700; color:var(--accent); min-width:28px;}
+  .day-totals{color:var(--muted); font-size:12.5px; margin-left:auto; text-align:right;}
+  .meal{padding:12px 14px; border-bottom:1px solid var(--line);}
+  .meal:last-child{border-bottom:none;}
+  .meal-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+  .meal-slot{font-size:11px; text-transform:lowercase; color:var(--muted); letter-spacing:.02em; min-width:70px;}
+  .meal-name{font-weight:600; flex:1; min-width:140px;}
+  .meal-kcal{font-size:12.5px; color:var(--muted);}
+  .meal-actions{display:flex; gap:6px;}
+  .ing-list{margin-top:6px; font-size:13px;}
+  .ing-row{display:flex; align-items:center; gap:8px; padding:3px 0;}
+  .ing-row span.ing-name{flex:1;}
+  .ing-row input{width:70px; padding:4px 6px; font-size:13px;}
+  .macro-badges{display:flex; gap:10px; font-size:12px; color:var(--muted); margin-top:4px;}
+  .macro-badges b{color:var(--text);}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px;}
+  .kpis{display:flex; gap:22px; flex-wrap:wrap; margin:10px 0 4px;}
+  .kpi .num-big{font-size:24px; font-weight:700;}
+  .kpi .lbl{font-size:11.5px; color:var(--muted);}
+  .patient-list-item{
+    display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .patient-list-item:hover{background:var(--surface);}
+  .patient-list-item .pname{font-weight:600; flex:1;}
+  .patient-list-item .pmeta{font-size:12px; color:var(--muted);}
+  .empty{color:var(--muted); font-size:13.5px; padding:20px 0; text-align:center; border:1px dashed var(--line); border-radius:var(--radius);}
+  .toast{
+    position:fixed; bottom:calc(20px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%);
+    background:var(--text); color:var(--bg); padding:10px 16px; border-radius:var(--radius); font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1;}
+  .shop-cat{margin-bottom:14px;}
+  .shop-cat h4{font-size:12.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin:0 0 6px; font-weight:700;}
+  .shop-item{display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13.5px;}
+  .shop-item.done span{text-decoration:line-through; color:var(--muted);}
+  .logo-preview{max-width:120px; max-height:60px; display:block; margin-top:8px; border:1px solid var(--line); border-radius:var(--radius);}
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .table-scroll table{white-space:nowrap;}
+  .lock-icon{cursor:pointer; font-size:15px; line-height:1;}
+  .warn{background:rgba(181,101,29,.12); border:1px solid var(--accent-2); color:var(--text); padding:10px 12px; border-radius:var(--radius); font-size:13px; margin-bottom:14px;}
+  .actions-bar{display:flex; gap:10px; flex-wrap:wrap; margin:18px 0;}
+  ::placeholder{color:var(--muted); opacity:.7;}
+  .progress-chart{width:100%; height:180px;}
+  .star{color:var(--accent-2);}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="wrap">
+    <div class="brand">
+      <h1>🥗 NutriPlan</h1>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button class="btn small secondary" id="btn-install" style="display:none;">⬇ Instalar app</button>
+        <small id="sync-status">local</small>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button data-tab="nuevo" class="active">Nuevo plan</button>
+      <button data-tab="pacientes">Pacientes</button>
+      <button data-tab="alimentos">Mis alimentos</button>
+      <button data-tab="config">Configuración</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================== TAB: NUEVO PLAN ===================== -->
+  <section class="tab active" id="tab-nuevo">
+
+    <div class="card" id="patient-form-card">
+      <h2>Datos del paciente</h2>
+      <p class="hint">Cargá el caso. El plan y los cálculos se arman apenas generás.</p>
+
+      <div class="field">
+        <label>Profesional que atiende</label>
+        <select id="f-profesional"></select>
+      </div>
+
+      <div class="field">
+        <label>Nombre del paciente</label>
+        <input type="text" id="f-nombre" placeholder="Nombre y apellido">
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label>Sexo</label>
+          <select id="f-sexo"><option value="F">Femenino</option><option value="M">Masculino</option></select>
+        </div>
+        <div class="field"><label>Edad (años)</label><input type="number" id="f-edad" value="35" min="1" max="110"></div>
+        <div class="field"><label>Peso (kg)</label><input type="number" id="f-peso" value="70" min="20" max="300" step="0.1"></div>
+        <div class="field"><label>Talla (cm)</label><input type="number" id="f-talla" value="165" min="100" max="230"></div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label>Actividad</label>
+          <select id="f-actividad">
+            <option value="sedentario">Sedentario (×1.2)</option>
+            <option value="ligero">Ligero (×1.375)</option>
+            <option value="moderado" selected>Moderado (×1.55)</option>
+            <option value="activo">Activo (×1.725)</option>
+            <option value="muyactivo">Muy activo (×1.9)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Objetivo</label>
+          <select id="f-objetivo">
+            <option value="bajar">Bajar de peso</option>
+            <option value="mantener" selected>Mantener</option>
+            <option value="subir">Subir de peso</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Situación clínica</label>
+          <select id="f-condicion">
+            <option value="ninguna">Ninguna</option>
+            <option value="diabetes">Diabetes / Insulinorresistencia</option>
+            <option value="dislipemia">Dislipemia</option>
+            <option value="hta">HTA</option>
+            <option value="renal">Renal</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Duración</label>
+          <select id="f-duracion">
+            <option value="7" selected>7 días</option>
+            <option value="14">14 días</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tipo de alimentación</label>
+        <div class="chip-group" id="f-tipoalim">
+          <label class="chip checked"><input type="radio" name="tipoalim" value="omnivoro" checked>Omnívoro</label>
+          <label class="chip"><input type="radio" name="tipoalim" value="vegetariano">Vegetariano</label>
+          <label class="chip"><input type="radio" name="tipoalim" value="vegano">Vegano</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Comidas por día</label>
+        <div class="chip-group" id="f-comidas">
+          <label class="chip"><input type="radio" name="comidas" value="3">3</label>
+          <label class="chip checked"><input type="radio" name="comidas" value="4" checked>4</label>
+          <label class="chip"><input type="radio" name="comidas" value="5">5</label>
+          <label class="chip"><input type="radio" name="comidas" value="6">6</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>¿Excluir algún grupo? <span style="font-weight:400">(alimento puntual: agregalo en "Mis alimentos → exclusiones")</span></label>
+        <div class="chip-group" id="f-exclusiones">
+          <label class="chip"><input type="checkbox" value="gluten">Sin TACC</label>
+          <label class="chip"><input type="checkbox" value="carnes">Carnes</label>
+          <label class="chip"><input type="checkbox" value="pescados">Pescados</label>
+          <label class="chip"><input type="checkbox" value="huevos">Huevos</label>
+          <label class="chip"><input type="checkbox" value="lacteos">Lácteos</label>
+          <label class="chip"><input type="checkbox" value="legumbres">Legumbres</label>
+          <label class="chip"><input type="checkbox" value="frutos_secos">Frutos secos</label>
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Objetivo calórico y reparto (editable)</legend>
+        <div class="grid">
+          <div class="field"><label>kcal/día</label><input type="number" id="f-kcal" step="10"></div>
+          <div class="field"><label>Proteínas %</label><input type="number" id="f-pctp" min="0" max="100"></div>
+          <div class="field"><label>Grasas %</label><input type="number" id="f-pctg" min="0" max="100"></div>
+          <div class="field"><label>Hidratos %</label><input type="number" id="f-pctc" min="0" max="100"></div>
+        </div>
+        <p class="hint" id="pct-check" style="margin:4px 0 0;">suma 100%</p>
+      </fieldset>
+
+      <div class="actions-bar">
+        <button class="btn" id="btn-generar">⚡ Generar plan</button>
+        <button class="btn secondary" id="btn-recalc">Recalcular kcal/macros sugeridos</button>
+      </div>
+    </div>
+
+    <div id="plan-output"></div>
+
+  </section>
+
+  <!-- ===================== TAB: PACIENTES ===================== -->
+  <section class="tab" id="tab-pacientes">
+    <h2>Pacientes</h2>
+    <p class="hint">Guardá el caso para volver a verlo y registrar el seguimiento de peso e IMC.</p>
+    <div id="patients-list"></div>
+
+    <div id="patient-detail" style="display:none; margin-top:20px;">
+      <hr>
+      <h3 id="pd-name"></h3>
+      <div class="kpis" id="pd-kpis"></div>
+      <div class="card">
+        <h3>Registrar control</h3>
+        <div class="row">
+          <div class="field" style="flex:1;"><label>Fecha</label><input type="date" id="pd-fecha"></div>
+          <div class="field" style="flex:1;"><label>Peso (kg)</label><input type="number" step="0.1" id="pd-peso"></div>
+        </div>
+        <button class="btn small" id="btn-add-control">Agregar control</button>
+      </div>
+      <div class="card">
+        <h3>Evolución de peso e IMC</h3>
+        <div id="pd-chart"></div>
+      </div>
+      <div class="actions-bar">
+        <button class="btn secondary small" id="btn-load-plan">Retomar borrador del plan</button>
+        <button class="btn danger small" id="btn-del-patient">Eliminar paciente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB: MIS ALIMENTOS ===================== -->
+  <section class="tab" id="tab-alimentos">
+    <h2>Mis alimentos y preparaciones</h2>
+    <p class="hint">Lo que cargués acá tiene prioridad ★ sobre la base del sistema al generar planes.</p>
+
+    <div class="card">
+      <h3>Nueva preparación</h3>
+      <div class="grid">
+        <div class="field" style="grid-column:1/-1"><label>Nombre</label><input id="cf-nombre" placeholder="Ej: Bowl de arroz con pollo"></div>
+        <div class="field">
+          <label>Se usa como</label>
+          <select id="cf-pool">
+            <option value="dm">Desayuno / merienda</option>
+            <option value="col">Colación</option>
+            <option value="ac">Almuerzo / cena</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tipo de alimentación</label>
+          <select id="cf-diet"><option value="omnivoro">Omnívoro</option><option value="vegetariano">Vegetariano</option><option value="vegano">Vegano</option></select>
+        </div>
+        <div class="field"><label>kcal totales</label><input type="number" id="cf-kcal"></div>
+        <div class="field"><label>Proteínas (g)</label><input type="number" id="cf-prot"></div>
+        <div class="field"><label>Grasas (g)</label><input type="number" id="cf-fat"></div>
+        <div class="field"><label>Hidratos (g)</label><input type="number" id="cf-carb"></div>
+      </div>
+      <div class="field">
+        <label>Ingredientes (uno por línea: nombre, gramos, medida casera)</label>
+        <textarea id="cf-ing" rows="3" placeholder="Arroz, 60, 4 cdas&#10;Pechuga de pollo, 120, 1 filet"></textarea>
+      </div>
+      <button class="btn small" id="btn-add-food">Guardar preparación</button>
+    </div>
+
+    <div id="custom-foods-list"></div>
+
+    <hr>
+    <div class="card">
+      <h3>📚 Tabla de composición de alimentos (Argentina)</h3>
+      <p class="hint">Valores de referencia por 100 g — en base a ARGENFOODS (UNLu) y USDA FoodData Central. Aproximados, con fines de orientación profesional; no reemplazan un análisis específico del alimento.</p>
+      <input type="text" id="comp-search" placeholder="Buscar alimento (ej: pollo, lenteja, palta)…">
+      <div class="table-scroll" style="margin-top:10px;">
+        <table id="comp-table">
+          <thead><tr>
+            <th>Alimento</th><th>kcal</th><th>Prot g</th><th>Grasa g</th><th>Sat g</th><th>HdC g</th><th>Azúc g</th><th>Fibra g</th>
+            <th>Sodio mg</th><th>Potasio mg</th><th>Calcio mg</th><th>Hierro mg</th><th>Fósforo mg</th><th>Magnesio mg</th><th>Zinc mg</th><th>Folato mcg</th><th>Vit A mcg</th><th>Vit C mg</th>
+          </tr></thead>
+          <tbody id="comp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB: CONFIGURACIÓN ===================== -->
+  <section class="tab" id="tab-config">
+    <h2>Configuración del consultorio</h2>
+    <p class="hint">El logo y el color son del consultorio (se comparten). Cada profesional tiene su propio nombre y matrícula para la portada del PDF.</p>
+    <div class="card">
+      <h3>Marca del consultorio</h3>
+      <div class="grid">
+        <div class="field"><label>Color de marca</label><input type="color" id="cfg-color" value="#3F6B52"></div>
+      </div>
+      <div class="field">
+        <label>Logo del consultorio</label>
+        <input type="file" id="cfg-logo" accept="image/*">
+        <img id="cfg-logo-preview" class="logo-preview" style="display:none;">
+      </div>
+      <button class="btn small" id="btn-save-config">Guardar</button>
+    </div>
+
+    <div class="card">
+      <h3>Profesionales</h3>
+      <p class="hint">Agregá a cada persona que atiende en el consultorio con su matrícula. Aparecen en "Profesional que atiende" al generar un plan.</p>
+      <div id="profesionales-list"></div>
+      <div class="grid" style="margin-top:12px;">
+        <div class="field"><label>Nombre / Licenciatura</label><input id="prof-nombre" placeholder="Lic. Nombre Apellido"></div>
+        <div class="field"><label>Matrícula</label><input id="prof-matricula" placeholder="MP 00000"></div>
+      </div>
+      <button class="btn small" id="btn-add-prof">+ Agregar profesional</button>
+    </div>
+
+    <div class="card">
+      <h3>Respaldo de datos</h3>
+      <p class="hint">Exportá pacientes, alimentos propios y configuración a un archivo. Sirve como copia de seguridad y para pasar los datos entre profesionales o dispositivos. Al importar, se suman sin borrar lo que ya hay (gana el registro más reciente).</p>
+      <div class="actions-bar" style="margin:0;">
+        <button class="btn secondary small" id="btn-export-backup">⬇ Exportar respaldo</button>
+        <button class="btn secondary small" id="btn-import-backup">⬆ Importar respaldo</button>
+        <input type="file" id="backup-file" accept="application/json,.json" style="display:none;">
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ================= TABLA DE COMPOSICIÓN DE ALIMENTOS (Argentina) =================
+   Valores de referencia por 100 g del alimento tal como se sirve (cocido cuando
+   corresponde). Fuentes de referencia: ARGENFOODS (Universidad Nacional de Luján,
+   red LATINFOODS/INFOODS) y USDA FoodData Central. Son valores aproximados con
+   fines de orientación profesional: no reemplazan un análisis específico del
+   alimento ni el criterio clínico.
+   Orden de campos: kcal, proteínas(g), hidratos(g), azúcares(g), fibra(g),
+   grasas(g), grasas saturadas(g), sodio(mg), potasio(mg), calcio(mg), hierro(mg),
+   fósforo(mg), magnesio(mg), zinc(mg), folato(mcg), vitamina A(mcg), vitamina C(mg) */
+const NUTKEYS = ["kcal","prot","carb","azucar","fibra","grasa","gsat","sodio","potasio","calcio","hierro","fosforo","magnesio","zinc","folato","vitA","vitC"];
+const INGREDIENTS_DB = {
+ // Cereales, panificados y derivados
+ "Avena": [389,17,66,1,10,7,1.2,2,429,54,4.7,523,177,3.9,56,0,0],
+ "Arroz": [130,2.7,28,0.1,0.4,0.3,0.1,1,35,10,0.2,43,12,0.5,3,0,0],
+ "Arroz integral": [123,2.7,26,0.4,1.8,1,0.2,4,86,10,0.5,103,44,0.6,4,0,0],
+ "Fideos secos": [158,5.8,31,0.6,1.8,0.9,0.2,6,44,7,1.3,58,18,0.5,7,0,0],
+ "Fideos integrales": [149,5.3,30,0.7,3.9,1.2,0.2,4,62,15,1,90,32,0.9,4,0,0],
+ "Polenta": [85,2,18,0.2,1.1,0.4,0.1,1,44,3,0.5,29,10,0.2,2,7,0],
+ "Harina de trigo": [364,10,76,0.3,2.7,1,0.2,2,107,15,1.2,108,22,0.7,26,0,0],
+ "Pan integral": [247,9,41,4,7,3.4,0.6,400,165,90,2.5,180,60,1.5,20,0,0],
+ "Pan francés": [265,8,52,4,2.5,1.2,0.3,490,110,60,1.6,90,25,0.7,60,0,0],
+ "Pan árabe": [275,9,53,2,3,1.9,0.3,480,120,50,2.8,100,30,1,50,0,0],
+ "Pan sin TACC": [260,4,55,3,2,3,0.7,420,90,60,1,80,15,0.5,10,0,0],
+ "Pan rallado": [395,13,72,4,4,5,1,700,190,140,4,150,45,1.4,20,0,0],
+ "Galletitas de agua": [430,10,72,2,3,10,2,700,140,40,2.8,130,25,0.9,20,0,0],
+ "Vainillas": [380,8,75,30,1,4,1.2,80,90,25,1.8,90,10,0.5,20,60,0],
+ "Granola": [471,10,64,20,7,20,4,140,340,60,3,240,90,2,30,0,0],
+ "Masa integral": [300,8,40,2,5,12,2,450,140,40,2,150,35,1,15,0,0],
+ // Legumbres y derivados de soja
+ "Lentejas": [116,9,20,1.8,8,0.4,0.1,2,369,19,3.3,180,36,1.3,181,0,1.5],
+ "Garbanzos": [164,8.9,27,4.8,7.6,2.6,0.3,7,291,49,2.9,168,48,1.5,172,1,1.3],
+ "Porotos negros": [132,8.9,24,0.3,8.7,0.5,0.1,1,355,27,2.1,140,60,1.1,149,0,0],
+ "Porotos alubia": [127,8.7,23,0.3,6.3,0.5,0.1,2,346,50,2.5,148,45,1,130,0,1],
+ "Arvejas": [84,5.4,16,5.7,5.5,0.2,0,3,244,25,1.5,108,33,1,65,35,14.2],
+ "Soja texturizada": [173,18,15,3,6,1,0.2,3,600,180,3.7,240,90,2,100,0,0],
+ "Tofu": [76,8,1.9,0.5,0.3,4.8,0.7,7,121,350,5.4,190,30,0.8,15,0,0],
+ // Verduras
+ "Zanahoria": [41,0.9,10,4.7,2.8,0.2,0,69,320,33,0.3,35,12,0.2,19,835,5.9],
+ "Calabaza": [26,1,7,2.8,0.5,0.1,0,1,340,21,0.8,44,12,0.3,16,400,9],
+ "Zapallito": [17,1.2,3.1,2.5,1,0.3,0.1,2,262,16,0.4,38,17,0.3,24,10,17],
+ "Batata": [86,1.6,20,4.2,3,0.1,0,55,337,30,0.6,47,25,0.3,11,709,2.4],
+ "Papa": [77,2,17,0.8,2.2,0.1,0,6,425,12,0.8,57,23,0.3,16,0,20],
+ "Mandioca": [160,1.4,38,1.7,1.8,0.3,0.1,14,271,16,0.3,27,21,0.3,27,1,20.6],
+ "Choclo": [86,3.3,19,3.2,2.7,1.2,0.2,15,270,2,0.5,89,37,0.5,42,10,6.8],
+ "Tomate": [18,0.9,3.9,2.6,1.2,0.2,0,5,237,10,0.3,24,11,0.2,15,42,14],
+ "Lechuga": [15,1.4,2.9,0.8,1.3,0.2,0,28,194,36,0.9,29,13,0.2,38,166,9.2],
+ "Rúcula": [25,2.6,3.7,2.1,1.6,0.7,0.1,27,369,160,1.5,52,47,0.5,97,119,15],
+ "Espinaca": [23,2.9,3.6,0.4,2.2,0.4,0.1,79,558,99,2.7,49,79,0.5,194,469,28.1],
+ "Acelga": [19,1.8,3.7,1.1,1.6,0.2,0,213,379,51,1.8,46,81,0.4,14,306,30],
+ "Brócoli": [34,2.8,7,1.7,2.6,0.4,0.1,33,316,47,0.7,66,21,0.4,63,31,89],
+ "Coliflor": [25,1.9,5,1.9,2,0.3,0,30,299,22,0.4,44,15,0.3,57,0,48],
+ "Repollo": [25,1.3,6,3.2,2.5,0.1,0,18,170,40,0.5,26,12,0.2,43,5,36],
+ "Cebolla": [40,1.1,9.3,4.2,1.7,0.1,0,4,146,23,0.2,29,10,0.2,19,0,7.4],
+ "Ajo": [149,6.4,33,1,2.1,0.5,0.1,17,401,181,1.7,153,25,1.2,3,0,31],
+ "Pimiento": [31,1,6,4.2,2.1,0.3,0,4,211,10,0.4,26,12,0.3,46,157,128],
+ "Berenjena": [25,1,6,3.2,3,0.2,0,2,229,9,0.2,24,14,0.2,22,1,2.2],
+ "Pepino": [15,0.7,3.6,1.7,0.5,0.1,0,2,147,16,0.3,24,13,0.2,7,5,2.8],
+ "Apio": [16,0.7,3,1.8,1.6,0.2,0,80,260,40,0.2,24,11,0.1,36,22,3.1],
+ "Remolacha": [43,1.6,10,7,2.8,0.2,0,78,325,16,0.8,40,23,0.4,109,2,4.9],
+ "Palta": [160,2,8.5,0.7,6.7,15,2.1,7,485,12,0.6,52,29,0.6,81,7,10],
+ "Verduras mixtas": [45,2,7,3,2.5,1.5,0.2,80,300,40,0.7,45,25,0.4,40,150,25],
+ // Frutas
+ "Manzana": [52,0.3,14,10,2.4,0.2,0,1,107,6,0.1,11,5,0,3,3,4.6],
+ "Banana": [89,1.1,23,12,2.6,0.3,0.1,1,358,5,0.3,22,27,0.2,20,3,8.7],
+ "Naranja": [47,0.9,12,9,2.4,0.1,0,0,181,40,0.1,14,10,0.1,30,11,53],
+ "Mandarina": [53,0.8,13,10,1.8,0.3,0,2,166,37,0.2,20,12,0.2,16,34,26.7],
+ "Pera": [57,0.4,15,10,3.1,0.1,0,1,116,9,0.2,12,7,0.1,7,1,4.3],
+ "Uva": [69,0.7,18,16,0.9,0.2,0.1,2,191,10,0.4,20,7,0.1,2,3,3.2],
+ "Frutillas": [32,0.7,7.7,4.9,2,0.3,0,1,153,16,0.4,24,13,0.1,24,1,58.8],
+ "Frutos rojos": [50,1,12,7,4,0.5,0,1,120,18,0.6,20,15,0.2,15,3,20],
+ "Durazno": [39,0.9,10,8.4,1.5,0.3,0,0,190,6,0.3,20,9,0.2,4,16,6.6],
+ "Ciruela": [46,0.7,11,10,1.4,0.3,0,0,157,6,0.2,16,7,0.1,1,17,9.5],
+ "Kiwi": [61,1.1,15,9,3,0.5,0,3,312,34,0.3,34,17,0.1,25,4,92.7],
+ "Ananá": [50,0.5,13,10,1.4,0.1,0,1,109,13,0.3,8,12,0.1,18,1,47.8],
+ "Sandía": [30,0.6,7.6,6.2,0.4,0.2,0,1,112,7,0.2,11,10,0.1,3,28,8.1],
+ "Melón": [34,0.8,8.2,7.9,0.9,0.2,0,16,267,9,0.2,15,12,0.2,21,169,36.7],
+ "Limón": [29,1.1,9.3,2.5,2.8,0.3,0,2,138,26,0.6,16,8,0.1,11,1,53],
+ "Pomelo": [42,0.8,11,7,1.6,0.1,0,0,135,22,0.1,18,9,0.1,13,23,33.3],
+ // Carnes y aves
+ "Carne magra": [172,29,0,0,0,5.4,2.1,60,370,10,3,220,25,4.6,10,0,0],
+ "Carne con grasa": [267,25,0,0,0,18,7.5,60,320,12,2.6,190,22,5,8,0,0],
+ "Carne picada magra": [215,26,0,0,0,12,4.8,65,330,15,2.8,200,21,4.8,9,0,0],
+ "Carne picada común": [254,25,0,0,0,17,6.8,65,300,15,2.5,190,20,4.7,9,0,0],
+ "Pechuga de pollo": [165,31,0,0,0,3.6,1,74,256,15,1,220,29,1,6,9,0],
+ "Pollo con piel": [232,26,0,0,0,13.5,3.7,90,240,12,1.3,190,23,2,9,25,0],
+ "Pavo": [135,30,0,0,0,1,0.3,55,280,15,1.2,220,28,1.2,7,0,0],
+ "Cerdo": [242,27,0,0,0,14,5,62,350,18,1,230,25,2.4,5,2,0],
+ "Jamón cocido": [145,18,2,1,0,7,2.4,1200,290,10,0.7,220,18,1.8,4,0,0],
+ "Jamón crudo": [195,25,0.3,0,0,10,3.5,2000,350,15,1.3,240,22,2.5,3,0,0],
+ "Salame": [380,22,2,0.5,0,32,12,1800,330,15,2,220,20,3,3,0,0],
+ "Chorizo": [300,17,3,0.5,0,25,9,900,280,12,1.6,180,18,2.3,4,0,0],
+ "Morcilla": [340,15,10,0.5,0,28,10,750,220,25,15,180,20,3,4,0,0],
+ // Pescados
+ "Merluza": [90,19,0,0,0,1,0.2,80,340,20,0.6,220,30,0.6,10,3,0],
+ "Salmón": [208,20,0,0,0,13,2.5,60,384,12,0.5,240,29,0.5,20,50,0],
+ "Atún al natural": [116,26,0,0,0,1,0.3,300,260,10,1.3,220,30,0.5,5,20,0],
+ "Caballa": [205,19,0,0,0,14,3.4,90,310,15,1.6,220,28,0.7,4,45,0],
+ // Huevos
+ "Huevo": [155,13,1.1,1.1,0,11,3.3,124,126,50,1.8,172,10,1.3,44,140,0],
+ "Claras de huevo": [52,11,0.7,0.7,0,0.2,0,166,163,7,0.1,15,11,0,4,0,0],
+ "Yema de huevo": [322,16,3.6,0.6,0,27,9,48,109,129,2.7,390,5,2.3,146,381,0],
+ // Lácteos
+ "Leche entera": [61,3.2,4.8,4.8,0,3.3,2.1,43,150,113,0,90,10,0.4,5,46,1],
+ "Leche descremada": [34,3.4,5,5,0,0.1,0.1,44,156,120,0,101,11,0.4,5,0,1],
+ "Yogur entero": [61,3.5,4.7,4.7,0,3.3,2,46,155,120,0,95,12,0.5,7,27,0.5],
+ "Yogur descremado": [45,4,6,6,0,0.1,0.1,50,170,140,0,110,13,0.6,8,1,0.6],
+ "Yogur de soja": [54,3.3,6,3,0.6,2,0.3,45,140,120,0.6,50,20,0.3,20,0,0],
+ "Bebida de almendras": [24,0.5,3,2,0.4,1.5,0.1,60,60,120,0.3,40,10,0.1,2,0,0],
+ "Queso untable descremado": [130,10,4,3,0,8,5,350,80,150,0.2,180,10,1,10,60,0],
+ "Queso descremado": [180,25,2,0.5,0,8,5,500,100,700,0.3,450,22,3,10,100,0],
+ "Queso cremoso": [300,20,2,0.5,0,24,15,600,90,600,0.3,400,20,3,15,220,0],
+ "Queso port salut": [330,22,1,0.5,0,27,17,550,100,650,0.3,420,22,3,10,230,0],
+ "Queso rallado": [400,35,3,0.5,0,28,18,1200,120,1100,0.7,700,35,4,15,200,0],
+ "Ricota descremada": [138,11,4,3,0,8,5,120,150,250,0.4,200,15,1,15,80,0],
+ "Manteca": [717,0.9,0.1,0.1,0,81,51,11,24,24,0,24,2,0.1,3,684,0],
+ "Crema de leche": [340,2.2,3,3,0,35,22,40,110,70,0.1,60,7,0.2,5,300,0.5],
+ "Dulce de leche": [315,7,55,55,0,7,4.5,90,340,220,0.2,190,20,0.6,6,40,1],
+ // Grasas y aceites
+ "Aceite de oliva": [884,0,0,0,0,100,14,2,1,1,0.6,0,0,0,0,0,0],
+ "Aceite de girasol": [884,0,0,0,0,100,12,0,0,0,0,0,0,0,0,0,0],
+ "Aceite de sésamo": [884,0,0,0,0,100,14,0,0,0,4.7,0,0,0,0,0,0],
+ "Mayonesa": [680,1,2,1,0,75,11,600,30,15,0.2,40,3,0.1,3,20,0],
+ "Aceitunas": [145,1,4,0.5,3.3,15,2,1500,42,52,0.5,4,4,0.2,0,20,0],
+ // Frutos secos y semillas
+ "Nueces": [654,15,14,2.6,6.7,65,6,2,441,98,2.9,346,158,3.1,98,1,1.3],
+ "Almendras": [579,21,22,4.4,12.5,50,3.8,1,733,269,3.7,481,270,3.1,44,0,0],
+ "Maní": [567,26,16,4,8.5,49,7,18,705,92,4.6,376,168,3.3,240,0,0],
+ "Castaña de cajú": [553,18,30,5.9,3.3,44,7.8,12,660,37,6.7,593,292,5.8,25,0,0.5],
+ "Semillas de chía": [486,17,42,0,34,31,3.3,16,407,631,7.7,860,335,4.6,49,54,1.6],
+ "Semillas de lino": [534,18,29,1.6,27,42,3.7,30,813,255,5.7,642,392,4.3,87,0,0.6],
+ "Semillas de girasol": [584,21,20,2.6,8.6,51,4.5,9,645,78,5,660,325,5,227,50,1.4],
+ "Semillas mixtas": [550,19,25,2,20,45,4,15,600,300,5,600,300,4,80,20,1],
+ // Azúcares y dulces
+ "Azúcar": [387,0,100,100,0,0,0,1,2,1,0,0,0,0,0,0,0],
+ "Miel": [304,0.3,82,82,0.2,0,0,4,52,6,0.4,4,2,0.2,2,0,0.5],
+ "Mermelada light": [130,0.3,32,20,1,0,0,15,50,10,0.3,8,4,0.1,2,10,5],
+ "Dulce de batata": [300,1,73,55,3,0.2,0,20,300,30,0.6,20,15,0.2,4,700,10],
+ "Membrillo": [290,0.5,72,60,1.5,0.2,0,15,150,15,0.5,15,10,0.1,3,10,5],
+ "Gelatina light": [10,1.5,0.5,0.5,0,0,0,45,2,1,0,1,0,0,0,0,0],
+ // Otros / bebidas
+ "Agua": [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],
+ "Yerba mate infusión": [2,0.1,0.4,0,0.1,0,0,2,20,5,0.2,3,5,0,1,0,0],
+ "Café": [2,0.1,0,0,0,0,0,2,49,2,0,3,3,0,0,0,0],
+ "Salsa de tomate": [32,1.6,7,4,1.5,0.3,0,380,290,15,0.6,30,15,0.3,10,40,10],
+ "Quinoa": [120,4.4,21,0.9,2.8,1.9,0.2,7,172,17,1.5,152,64,2,42,0,0]
+};
+function nutFromArr(arr){ const o={}; NUTKEYS.forEach((k,i)=>o[k]=arr[i]); return o; }
+function nutOf(name){
+  const arr = INGREDIENTS_DB[name];
+  if(!arr){ console.warn("Ingrediente sin datos de composición:", name); return nutZero(); }
+  return nutFromArr(arr);
+}
+function nutZero(){ const o={}; NUTKEYS.forEach(k=>o[k]=0); return o; }
+function addNutScaled(acc, nut, grams){ NUTKEYS.forEach(k=>{ acc[k] += (nut[k]||0)*grams/100; }); return acc; }
+function roundNut(o){ const r={}; NUTKEYS.forEach(k=>r[k]=Math.round(o[k]*10)/10); return r; }
+function computeRecipeNut(ing){
+  const acc = nutZero();
+  ing.forEach(i=>{ addNutScaled(acc, nutOf(i[0]), i[1]); });
+  return roundNut(acc);
+}
+function scaleNutObj(nut, scale){ const r={}; NUTKEYS.forEach(k=>r[k]=Math.round(nut[k]*scale*10)/10); return r; }
+
+/* ================= RECIPE BASE (example seed data) =================
+   Cada preparación referencia alimentos de INGREDIENTS_DB por nombre; sus
+   macro y micronutrientes se calculan sumando los ingredientes reales
+   (ver computeRecipeNut), no se cargan a mano. */
+// diet order: vegano < vegetariano < omnivoro (a patient's diet allows anything at or below its own restrictiveness)
+const DM = [ // desayuno / merienda
+ {id:"dm1",name:"Avena con leche y banana",diet:"vegetariano",gf:false,groups:["lacteos"],ing:[["Avena",40,"4 cdas","Almacén"],["Leche descremada",200,"1 vaso","Lácteos"],["Banana",100,"1 unidad","Frutas y verduras"]]},
+ {id:"dm2",name:"Avena con bebida de almendras y manzana",diet:"vegano",gf:false,groups:["frutos_secos"],ing:[["Avena",40,"4 cdas","Almacén"],["Bebida de almendras",200,"1 vaso","Almacén"],["Manzana",100,"1 unidad","Frutas y verduras"]]},
+ {id:"dm3",name:"Tostadas integrales con palta y huevo",diet:"vegetariano",gf:false,groups:["huevos","gluten"],ing:[["Pan integral",60,"2 rodajas","Panadería"],["Palta",50,"1/4 unidad","Frutas y verduras"],["Huevo",50,"1 unidad","Huevos"]]},
+ {id:"dm4",name:"Tostadas sin TACC con queso untable",diet:"vegetariano",gf:true,groups:["lacteos"],ing:[["Pan sin TACC",60,"2 rodajas","Panadería"],["Queso untable descremado",40,"2 cdas","Lácteos"]]},
+ {id:"dm5",name:"Yogur con granola y frutillas",diet:"vegetariano",gf:false,groups:["lacteos","frutos_secos"],ing:[["Yogur descremado",200,"1 pote","Lácteos"],["Granola",30,"3 cdas","Almacén"],["Frutillas",80,"1 taza","Frutas y verduras"]]},
+ {id:"dm6",name:"Licuado de banana y avena con leche",diet:"vegetariano",gf:false,groups:["lacteos"],ing:[["Leche descremada",250,"1 vaso y medio","Lácteos"],["Banana",100,"1 unidad","Frutas y verduras"],["Avena",30,"3 cdas","Almacén"]]},
+ {id:"dm7",name:"Huevos revueltos con espinaca",diet:"vegetariano",gf:true,groups:["huevos"],ing:[["Huevo",100,"2 unidades","Huevos"],["Espinaca",50,"1 taza","Frutas y verduras"],["Aceite de oliva",5,"1 cdta","Almacén"]]},
+ {id:"dm8",name:"Pan árabe con queso y tomate",diet:"vegetariano",gf:false,groups:["lacteos","gluten"],ing:[["Pan árabe",60,"1 unidad","Panadería"],["Queso port salut",40,"2 fetas","Lácteos"],["Tomate",50,"1/2 unidad","Frutas y verduras"]]},
+ {id:"dm9",name:"Chía con leche y frutos rojos",diet:"vegetariano",gf:true,groups:["lacteos"],ing:[["Semillas de chía",20,"2 cdas","Almacén"],["Leche descremada",200,"1 vaso","Lácteos"],["Frutos rojos",60,"1/2 taza","Frutas y verduras"]]},
+ {id:"dm10",name:"Bowl de yogur vegano con semillas",diet:"vegano",gf:true,groups:["frutos_secos"],ing:[["Yogur de soja",200,"1 pote","Almacén"],["Semillas mixtas",20,"2 cdas","Almacén"],["Manzana",80,"1 unidad chica","Frutas y verduras"]]},
+ {id:"dm11",name:"Tostadas con ricota y mermelada light",diet:"vegetariano",gf:false,groups:["lacteos","gluten"],ing:[["Pan integral",60,"2 rodajas","Panadería"],["Ricota descremada",50,"2 cdas","Lácteos"],["Mermelada light",20,"1 cda","Almacén"]]},
+ {id:"dm12",name:"Café con leche y vainillas",diet:"vegetariano",gf:false,groups:["lacteos","gluten"],ing:[["Leche descremada",200,"1 vaso","Lácteos"],["Vainillas",30,"6 unidades","Panadería"]]},
+ {id:"dm13",name:"Smoothie verde con manzana y avena",diet:"vegano",gf:false,groups:[],ing:[["Manzana",100,"1 unidad","Frutas y verduras"],["Espinaca",30,"1 puñado","Frutas y verduras"],["Avena",20,"2 cdas","Almacén"]]},
+ {id:"dm14",name:"Omelette de claras con queso",diet:"vegetariano",gf:true,groups:["huevos","lacteos"],ing:[["Claras de huevo",150,"5 unidades","Huevos"],["Queso descremado",30,"2 fetas","Lácteos"]]}
+];
+const COL = [ // colación
+ {id:"col1",name:"Fruta con frutos secos",diet:"vegano",gf:true,groups:["frutos_secos"],ing:[["Manzana",100,"1 unidad","Frutas y verduras"],["Nueces",15,"3 unidades","Almacén"]]},
+ {id:"col2",name:"Yogur descremado",diet:"vegetariano",gf:true,groups:["lacteos"],ing:[["Yogur descremado",150,"1 pote chico","Lácteos"]]},
+ {id:"col3",name:"Gelatina light con frutas",diet:"vegano",gf:true,groups:[],ing:[["Gelatina light",100,"1 pote","Almacén"],["Frutillas",50,"1/4 taza","Frutas y verduras"]]},
+ {id:"col4",name:"Barrita de cereal casera",diet:"vegano",gf:false,groups:["frutos_secos","gluten"],ing:[["Avena",20,"2 cdas","Almacén"],["Miel",10,"1 cdta","Almacén"],["Nueces",10,"2 unidades","Almacén"]]},
+ {id:"col5",name:"Hummus con bastones de zanahoria",diet:"vegano",gf:true,groups:["legumbres"],ing:[["Garbanzos",60,"1/3 taza","Almacén"],["Zanahoria",80,"1 unidad","Frutas y verduras"],["Aceite de oliva",5,"1 cdta","Almacén"]]},
+ {id:"col6",name:"Tostadas con queso untable",diet:"vegetariano",gf:false,groups:["lacteos","gluten"],ing:[["Pan integral",30,"1 rodaja","Panadería"],["Queso untable descremado",20,"1 cda","Lácteos"]]},
+ {id:"col7",name:"Licuado de frutas",diet:"vegano",gf:true,groups:[],ing:[["Banana",60,"1/2 unidad","Frutas y verduras"],["Agua",150,"1 vaso","—"]]},
+ {id:"col8",name:"Puñado de frutos secos",diet:"vegano",gf:true,groups:["frutos_secos"],ing:[["Almendras",25,"20 unidades","Almacén"]]}
+];
+const AC = [ // almuerzo / cena
+ {id:"ac1",name:"Pollo al horno con puré de calabaza",diet:"omnivoro",gf:true,groups:["carnes"],ing:[["Pechuga de pollo",150,"1 filet","Carnicería"],["Calabaza",200,"1 taza de puré","Frutas y verduras"],["Aceite de oliva",10,"1 cda","Almacén"]]},
+ {id:"ac2",name:"Milanesa de pollo al horno con ensalada",diet:"omnivoro",gf:false,groups:["carnes","gluten"],ing:[["Pechuga de pollo",150,"1 filet","Carnicería"],["Pan rallado",20,"2 cdas","Almacén"],["Lechuga",60,"1/2 plato","Frutas y verduras"],["Tomate",40,"1/2 unidad","Frutas y verduras"]]},
+ {id:"ac3",name:"Filet de merluza con arroz y verduras",diet:"omnivoro",gf:true,groups:["pescados"],ing:[["Merluza",150,"1 filet","Pescadería"],["Arroz",60,"1/2 taza cruda","Almacén"],["Verduras mixtas",100,"1 taza","Frutas y verduras"]]},
+ {id:"ac4",name:"Salmón grillado con quinoa",diet:"omnivoro",gf:true,groups:["pescados"],ing:[["Salmón",130,"1 filet","Pescadería"],["Quinoa",60,"1/2 taza cruda","Almacén"],["Brócoli",100,"1 taza","Frutas y verduras"]]},
+ {id:"ac5",name:"Guiso de lentejas",diet:"vegano",gf:true,groups:["legumbres"],ing:[["Lentejas",80,"1/2 taza crudas","Almacén"],["Verduras mixtas",100,"1 taza","Frutas y verduras"],["Aceite de oliva",10,"1 cda","Almacén"]]},
+ {id:"ac6",name:"Tarta de verduras (masa integral)",diet:"vegetariano",gf:false,groups:["huevos","lacteos","gluten"],ing:[["Masa integral",60,"1 tapa","Panadería"],["Acelga",100,"1 taza","Frutas y verduras"],["Huevo",50,"1 unidad","Huevos"],["Queso port salut",30,"2 fetas","Lácteos"]]},
+ {id:"ac7",name:"Ensalada de garbanzos y vegetales",diet:"vegano",gf:true,groups:["legumbres"],ing:[["Garbanzos",100,"1/2 taza","Almacén"],["Verduras mixtas",150,"1 plato","Frutas y verduras"],["Aceite de oliva",10,"1 cda","Almacén"]]},
+ {id:"ac8",name:"Wok de tofu y vegetales",diet:"vegano",gf:true,groups:[],ing:[["Tofu",120,"1 taza","Almacén"],["Verduras mixtas",150,"1 plato","Frutas y verduras"],["Aceite de sésamo",10,"1 cda","Almacén"]]},
+ {id:"ac9",name:"Carne magra al horno con batata",diet:"omnivoro",gf:true,groups:["carnes"],ing:[["Carne magra",150,"1 bife","Carnicería"],["Batata",150,"1 unidad","Frutas y verduras"],["Lechuga",50,"1 plato chico","Frutas y verduras"]]},
+ {id:"ac10",name:"Pollo a la plancha con hojas verdes",diet:"omnivoro",gf:true,groups:["carnes"],ing:[["Pechuga de pollo",150,"1 filet","Carnicería"],["Lechuga",100,"1 plato","Frutas y verduras"],["Aceite de oliva",10,"1 cda","Almacén"]]},
+ {id:"ac11",name:"Risotto de vegetales",diet:"vegetariano",gf:true,groups:["lacteos"],ing:[["Arroz",70,"1/2 taza cruda","Almacén"],["Verduras mixtas",100,"1 taza","Frutas y verduras"],["Queso rallado",20,"2 cdas","Lácteos"]]},
+ {id:"ac12",name:"Fideos integrales con atún",diet:"omnivoro",gf:false,groups:["pescados","gluten"],ing:[["Fideos integrales",80,"1 taza cocidos","Almacén"],["Atún al natural",100,"1 lata","Almacén"],["Salsa de tomate",100,"1/2 taza","Almacén"]]},
+ {id:"ac13",name:"Berenjenas rellenas de vegetales y queso",diet:"vegetariano",gf:true,groups:["lacteos"],ing:[["Berenjena",200,"1 unidad","Frutas y verduras"],["Verduras mixtas",80,"1/2 taza","Frutas y verduras"],["Queso port salut",30,"2 fetas","Lácteos"]]},
+ {id:"ac14",name:"Pechuga rellena con espinaca y ricota",diet:"omnivoro",gf:true,groups:["carnes","lacteos"],ing:[["Pechuga de pollo",150,"1 filet","Carnicería"],["Espinaca",50,"1/2 taza","Frutas y verduras"],["Ricota descremada",40,"2 cdas","Lácteos"]]},
+ {id:"ac15",name:"Ensalada de quinoa, garbanzos y vegetales",diet:"vegano",gf:true,groups:["legumbres"],ing:[["Quinoa",60,"1/2 taza cruda","Almacén"],["Garbanzos",60,"1/3 taza","Almacén"],["Verduras mixtas",100,"1 taza","Frutas y verduras"]]},
+ {id:"ac16",name:"Cazuela de lentejas y vegetales",diet:"vegano",gf:true,groups:["legumbres"],ing:[["Lentejas",80,"1/2 taza crudas","Almacén"],["Verduras mixtas",120,"1 taza","Frutas y verduras"],["Aceite de oliva",8,"1 cda","Almacén"]]},
+ {id:"ac17",name:"Hamburguesa casera de carne magra",diet:"omnivoro",gf:false,groups:["carnes","gluten"],ing:[["Carne picada magra",150,"1 medallón","Carnicería"],["Pan integral",40,"1 pan","Panadería"],["Lechuga",80,"1 plato","Frutas y verduras"]]},
+ {id:"ac18",name:"Vegetales grillados con huevo poché",diet:"vegetariano",gf:true,groups:["huevos"],ing:[["Verduras mixtas",200,"1 plato","Frutas y verduras"],["Huevo",50,"1 unidad","Huevos"],["Aceite de oliva",5,"1 cdta","Almacén"]]}
+];
+const POOLS = {dm:DM, col:COL, ac:AC};
+const DIET_ORDER = {vegano:0, vegetariano:1, omnivoro:2};
+// Umbrales clínicos orientativos por porción servida (no reemplazan indicación profesional)
+const CLINICAL_LIMITS = { hta:{sodio:700}, renal:{potasio:600, fosforo:350}, diabetes:{azucar:20}, dislipemia:{gsat:6} };
+function clinicalOk(nut, condicion){
+  const lim = CLINICAL_LIMITS[condicion];
+  if(!lim) return true;
+  return Object.keys(lim).every(k => (nut[k]||0) <= lim[k]);
+}
+// precompute nutrition for every seed recipe
+Object.values(POOLS).forEach(pool=> pool.forEach(r=>{ r.nut = computeRecipeNut(r.ing); }));
+
+/* ================= STATE ================= */
+let db = null;
+let downloadsCap = null;
+let customFoods = []; // {id, pool, diet, gf, groups, unsuit, kcal, prot, carb, fat, ing:[[name,g,measure,cat]], name, custom:true}
+let config = {color:"#3F6B52", logo:"", profesionales:[]};
+let currentPatientId = null;
+let currentPatientMeta = null; // {name, sex, edad, ...}
+let currentPlan = null; // [{day, meals:[{slot,recipeId,name,kcal,prot,carb,fat,ing:[[name,g,measure,cat]],locked}]}]
+let shoppingChecked = {};
+
+/* ================= UTIL ================= */
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function round1(n){ return Math.round(n*10)/10; }
+function uid(prefix){ return prefix+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function el(id){ return document.getElementById(id); }
+
+/* ================= STORE (db capability with localStorage fallback) ================= */
+const store = {
+  async init(){
+    try{
+      if(window.claude && window.claude.use){
+        db = await window.claude.use("db");
+      }
+    }catch(e){ db = null; }
+    try{
+      if(window.claude && window.claude.use){
+        downloadsCap = await window.claude.use("downloads");
+      }
+    }catch(e){ downloadsCap = null; }
+    el("sync-status").textContent = db ? "sincronizado" : "guardado local";
+  },
+  async listPatients(){
+    if(db){
+      try{
+        const snap = await db.collection("patients").get();
+        return snap.docs.map(d=>({id:d.id, ...(typeof d.data==="function"?d.data():d.data)}));
+      }catch(e){ console.error(e); return []; }
+    }
+    return JSON.parse(localStorage.getItem("np_patients")||"[]");
+  },
+  async savePatient(p){
+    if(!p.id) p.id = uid("pt");
+    if(db){
+      try{ await db.collection("patients").doc(p.id).set(p); }
+      catch(e){ console.error(e); toast("No se pudo guardar en la nube, se guardó localmente."); this._localUpsert("np_patients", p); }
+    } else {
+      this._localUpsert("np_patients", p);
+    }
+    return p.id;
+  },
+  async deletePatient(id){
+    if(db){ try{ await db.collection("patients").doc(id).delete(); }catch(e){console.error(e);} }
+    this._localRemove("np_patients", id);
+  },
+  async getConfig(){
+    let cfg = null;
+    if(db){
+      try{
+        const snap = await db.doc("config/main").get();
+        const exists = typeof snap.exists==="function" ? snap.exists() : snap.exists;
+        const data = typeof snap.data==="function" ? snap.data() : snap.data;
+        if(exists && data) cfg = data;
+      }catch(e){ console.error(e); }
+    }
+    if(!cfg) cfg = JSON.parse(localStorage.getItem("np_config")||"null");
+    if(!cfg) return {color:"#3F6B52", logo:"", profesionales:[]};
+    if(!cfg.profesionales){ // migración desde el esquema viejo (un solo profesional)
+      cfg.profesionales = cfg.nombre ? [{id:uid("pf"), nombre:cfg.nombre, matricula:cfg.matricula||""}] : [];
+      delete cfg.nombre; delete cfg.matricula;
+    }
+    return cfg;
+  },
+  async saveConfig(cfg){
+    if(db){ try{ await db.doc("config/main").set(cfg); return; }catch(e){ console.error(e); } }
+    localStorage.setItem("np_config", JSON.stringify(cfg));
+  },
+  async listCustomFoods(){
+    if(db){
+      try{
+        const snap = await db.collection("customfoods").get();
+        return snap.docs.map(d=>({id:d.id, ...(typeof d.data==="function"?d.data():d.data)}));
+      }catch(e){ console.error(e); return []; }
+    }
+    return JSON.parse(localStorage.getItem("np_customfoods")||"[]");
+  },
+  async addCustomFood(food){
+    food.id = uid("cf");
+    if(db){ try{ await db.collection("customfoods").doc(food.id).set(food); return food.id; }catch(e){console.error(e);} }
+    this._localUpsert("np_customfoods", food);
+    return food.id;
+  },
+  async putCustomFood(food){
+    if(!food.id) food.id = uid("cf");
+    if(db){ try{ await db.collection("customfoods").doc(food.id).set(food); return; }catch(e){console.error(e);} }
+    this._localUpsert("np_customfoods", food);
+  },
+  async deleteCustomFood(id){
+    if(db){ try{ await db.collection("customfoods").doc(id).delete(); }catch(e){console.error(e);} }
+    this._localRemove("np_customfoods", id);
+  },
+  _localUpsert(key, item){
+    const list = JSON.parse(localStorage.getItem(key)||"[]");
+    const i = list.findIndex(x=>x.id===item.id);
+    if(i>=0) list[i]=item; else list.push(item);
+    localStorage.setItem(key, JSON.stringify(list));
+  },
+  _localRemove(key, id){
+    const list = JSON.parse(localStorage.getItem(key)||"[]").filter(x=>x.id!==id);
+    localStorage.setItem(key, JSON.stringify(list));
+  }
+};
+
+/* ================= CALCULATIONS ================= */
+const ACT_FACTORS = {sedentario:1.2, ligero:1.375, moderado:1.55, activo:1.725, muyactivo:1.9};
+function calcTMB(sexo, peso, talla, edad){
+  return sexo==="M" ? (10*peso + 6.25*talla - 5*edad + 5) : (10*peso + 6.25*talla - 5*edad - 161);
+}
+function calcGET(tmb, actividad){ return tmb * (ACT_FACTORS[actividad]||1.2); }
+function calcObjetivoKcal(get, objetivo){
+  if(objetivo==="bajar") return get*0.8;
+  if(objetivo==="subir") return get*1.15;
+  return get;
+}
+function defaultMacros(condicion){
+  switch(condicion){
+    case "diabetes": return {p:30,g:30,c:40};
+    case "dislipemia": return {p:25,g:25,c:50};
+    case "hta": return {p:20,g:30,c:50};
+    case "renal": return {p:15,g:35,c:50};
+    default: return {p:25,g:30,c:45};
+  }
+}
+function calcIMC(peso, tallaCm){
+  const t = tallaCm/100;
+  return peso/(t*t);
+}
+function imcLabel(imc){
+  if(imc<18.5) return "Bajo peso";
+  if(imc<25) return "Normopeso";
+  if(imc<30) return "Sobrepeso";
+  return "Obesidad";
+}
+
+function mealDistribution(n){
+  n = Number(n);
+  if(n===3) return [{slot:"desayuno",pct:.3},{slot:"almuerzo",pct:.4},{slot:"cena",pct:.3}];
+  if(n===4) return [{slot:"desayuno",pct:.2},{slot:"almuerzo",pct:.35},{slot:"merienda",pct:.15},{slot:"cena",pct:.3}];
+  if(n===5) return [{slot:"desayuno",pct:.18},{slot:"colacion",pct:.1},{slot:"almuerzo",pct:.32},{slot:"merienda",pct:.15},{slot:"cena",pct:.25}];
+  return [{slot:"desayuno",pct:.16},{slot:"colacion",pct:.1},{slot:"almuerzo",pct:.28},{slot:"merienda",pct:.13},{slot:"colacion2",pct:.08},{slot:"cena",pct:.25}];
+}
+function poolForSlot(slot){
+  if(slot==="desayuno"||slot==="merienda") return "dm";
+  if(slot==="colacion"||slot==="colacion2") return "col";
+  return "ac";
+}
+function slotLabel(slot){
+  return {desayuno:"Desayuno", merienda:"Merienda", almuerzo:"Almuerzo", cena:"Cena", colacion:"Colación", colacion2:"Colación"}[slot]||slot;
+}
+
+function dietAllowed(recipeDiet, patientDiet){ return DIET_ORDER[recipeDiet] <= DIET_ORDER[patientDiet]; }
+function hasExcludedGroup(groups, exclusiones){ return (groups||[]).some(g=>exclusiones.includes(g)); }
+
+function getPool(poolKey, patient){
+  const base = POOLS[poolKey].map(r=>({...r, custom:false}));
+  const custom = customFoods.filter(f=>f.pool===poolKey).map(f=>({...f, custom:true, customNut:true}));
+  return custom.concat(base); // custom first -> priority in tie-break
+}
+
+// Filtro "duro": tipo de alimentación, exclusiones por grupo y sin TACC. No mira todavía sodio/potasio/etc.
+// porque eso depende de a cuántos gramos se va a escalar cada preparación (se evalúa en pickMeal).
+function pickCandidates(poolKey, patient){
+  const pool = getPool(poolKey, patient);
+  let cands = pool.filter(r=>
+    dietAllowed(r.diet, patient.tipoalim) &&
+    !hasExcludedGroup(r.groups, patient.exclusiones) &&
+    (!patient.exclusiones.includes("gluten") || r.gf)
+  );
+  if(cands.length===0){
+    cands = pool.filter(r=> dietAllowed(r.diet, patient.tipoalim) && !hasExcludedGroup(r.groups, patient.exclusiones));
+  }
+  return cands;
+}
+
+function scaleMeal(recipe, targetKcal, slot, nutOverride, warn){
+  const baseKcal = recipe.customNut ? (recipe.kcal||0) : recipe.nut.kcal;
+  const scale = baseKcal>0 ? targetKcal/baseKcal : 1;
+  const nut = nutOverride || (recipe.customNut ? {kcal:Math.round((recipe.kcal||0)*scale), prot:round1((recipe.prot||0)*scale), carb:round1((recipe.carb||0)*scale), grasa:round1((recipe.fat||0)*scale), fibra:0,azucar:0,gsat:0,sodio:0,potasio:0,calcio:0,hierro:0,fosforo:0,magnesio:0,zinc:0,folato:0,vitA:0,vitC:0} : scaleNutObj(recipe.nut, scale));
+  return {
+    slot, recipeId: recipe.id, name: recipe.name, custom: !!recipe.custom, customNut: !!recipe.customNut,
+    nut, warn: !!warn,
+    ing: (recipe.ing||[]).map(i=>[i[0], Math.round(i[1]*scale), i[2], i[3]]),
+    locked:false
+  };
+}
+
+function pickMeal(poolKey, targetKcal, slot, patient, usage){
+  const cands = pickCandidates(poolKey, patient);
+  if(cands.length===0) return {slot, recipeId:null, name:"(sin opciones disponibles con estos filtros)", nut:nutZero(), ing:[], locked:false, warn:true};
+  // evaluar nutrientes ya escalados al objetivo de esta comida, para filtrar por sodio/potasio/azúcar/grasa saturada reales
+  const evaluated = cands.map(c=>{
+    const baseKcal = c.customNut ? (c.kcal||0) : c.nut.kcal;
+    const scale = baseKcal>0 ? targetKcal/baseKcal : 1;
+    const nut = c.customNut ? null : scaleNutObj(c.nut, scale);
+    const ok = c.customNut ? true : clinicalOk(nut, patient.condicion);
+    return {recipe:c, scale, nut, ok};
+  });
+  let pool2 = evaluated.filter(e=>e.ok);
+  let warn = false;
+  if(pool2.length===0){ pool2 = evaluated; warn = true; } // no hay ninguna opción que cumpla estrictamente: se relaja y se marca para revisión manual
+  let minUse = Infinity;
+  pool2.forEach(e=>{ const u = usage[e.recipe.id]||0; if(u<minUse) minUse=u; });
+  const top = pool2.filter(e=>(usage[e.recipe.id]||0)===minUse);
+  const chosen = top[Math.floor(Math.random()*top.length)];
+  usage[chosen.recipe.id] = (usage[chosen.recipe.id]||0)+1;
+  return scaleMeal(chosen.recipe, targetKcal, slot, chosen.nut, warn && patient.condicion!=="ninguna");
+}
+
+function generatePlan(patient, days, existingPlan){
+  const dist = mealDistribution(patient.comidas);
+  const usage = {};
+  // seed usage counts from locked meals so variety accounts for them
+  if(existingPlan){
+    existingPlan.forEach(day=>day.meals.forEach(m=>{ if(m.recipeId) usage[m.recipeId]=(usage[m.recipeId]||0)+1; }));
+  }
+  const plan = [];
+  for(let d=1; d<=days; d++){
+    const meals = [];
+    dist.forEach((slotDef, idx)=>{
+      const existingDay = existingPlan && existingPlan[d-1];
+      const existingMeal = existingDay && existingDay.meals[idx];
+      if(existingMeal && existingMeal.locked){
+        meals.push(existingMeal);
+      } else {
+        const target = patient.kcalObjetivo * slotDef.pct;
+        const poolKey = poolForSlot(slotDef.slot);
+        meals.push(pickMeal(poolKey, target, slotDef.slot, patient, usage));
+      }
+    });
+    plan.push({day:d, meals});
+  }
+  return plan;
+}
+
+/* ================= UI: TABS ================= */
+document.querySelectorAll("nav.tabs button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll("section.tab").forEach(s=>s.classList.remove("active"));
+    btn.classList.add("active");
+    el("tab-"+btn.dataset.tab).classList.add("active");
+    if(btn.dataset.tab==="pacientes") renderPatientsList();
+    if(btn.dataset.tab==="alimentos"){ renderCustomFoodsList(); renderCompositionTable(el("comp-search").value); }
+    if(btn.dataset.tab==="config") renderConfig();
+  });
+});
+
+/* chip toggle helper */
+document.querySelectorAll(".chip-group").forEach(group=>{
+  group.addEventListener("click", (e)=>{
+    const label = e.target.closest(".chip");
+    if(!label) return;
+    const input = label.querySelector("input");
+    if(input.type==="radio"){
+      group.querySelectorAll(".chip").forEach(c=>c.classList.remove("checked"));
+      label.classList.add("checked");
+    } else {
+      setTimeout(()=>{ label.classList.toggle("checked", input.checked); },0);
+    }
+  });
+});
+
+/* ================= FORM -> PATIENT OBJECT ================= */
+function readPatientForm(){
+  return {
+    profesionalId: el("f-profesional").value || "",
+    nombre: el("f-nombre").value.trim() || "Paciente sin nombre",
+    sexo: el("f-sexo").value,
+    edad: Number(el("f-edad").value),
+    peso: Number(el("f-peso").value),
+    talla: Number(el("f-talla").value),
+    actividad: el("f-actividad").value,
+    objetivo: el("f-objetivo").value,
+    condicion: el("f-condicion").value,
+    duracion: Number(el("f-duracion").value),
+    tipoalim: document.querySelector('input[name="tipoalim"]:checked').value,
+    comidas: Number(document.querySelector('input[name="comidas"]:checked').value),
+    exclusiones: Array.from(document.querySelectorAll('#f-exclusiones input:checked')).map(i=>i.value),
+    kcalObjetivo: Number(el("f-kcal").value)||0,
+    macros: {p:Number(el("f-pctp").value)||0, g:Number(el("f-pctg").value)||0, c:Number(el("f-pctc").value)||0}
+  };
+}
+function fillPatientForm(p){
+  if(p.profesionalId) el("f-profesional").value = p.profesionalId;
+  el("f-nombre").value = p.nombre||"";
+  el("f-sexo").value = p.sexo||"F";
+  el("f-edad").value = p.edad||30;
+  el("f-peso").value = p.peso||70;
+  el("f-talla").value = p.talla||165;
+  el("f-actividad").value = p.actividad||"moderado";
+  el("f-objetivo").value = p.objetivo||"mantener";
+  el("f-condicion").value = p.condicion||"ninguna";
+  el("f-duracion").value = p.duracion||7;
+  document.querySelectorAll('input[name="tipoalim"]').forEach(r=>{ r.checked = r.value===(p.tipoalim||"omnivoro"); r.closest(".chip").classList.toggle("checked", r.checked); });
+  document.querySelectorAll('input[name="comidas"]').forEach(r=>{ r.checked = Number(r.value)===(p.comidas||4); r.closest(".chip").classList.toggle("checked", r.checked); });
+  document.querySelectorAll('#f-exclusiones input').forEach(c=>{ c.checked = (p.exclusiones||[]).includes(c.value); c.closest(".chip").classList.toggle("checked", c.checked); });
+  el("f-kcal").value = p.kcalObjetivo||"";
+  el("f-pctp").value = p.macros? p.macros.p : "";
+  el("f-pctg").value = p.macros? p.macros.g : "";
+  el("f-pctc").value = p.macros? p.macros.c : "";
+}
+function recalcSuggested(){
+  const p = readPatientForm();
+  const tmb = calcTMB(p.sexo, p.peso, p.talla, p.edad);
+  const get = calcGET(tmb, p.actividad);
+  const kcal = calcObjetivoKcal(get, p.objetivo);
+  const macros = defaultMacros(p.condicion);
+  el("f-kcal").value = Math.round(kcal);
+  el("f-pctp").value = macros.p;
+  el("f-pctg").value = macros.g;
+  el("f-pctc").value = macros.c;
+  checkPct();
+  return {tmb, get, kcal, macros};
+}
+function checkPct(){
+  const sum = (Number(el("f-pctp").value)||0)+(Number(el("f-pctg").value)||0)+(Number(el("f-pctc").value)||0);
+  const hint = el("pct-check");
+  hint.textContent = sum===100 ? "suma 100% ✓" : ("suma "+sum+"% — ajustá para llegar a 100%");
+  hint.style.color = sum===100 ? "var(--accent)" : "var(--accent-2)";
+}
+["f-pctp","f-pctg","f-pctc"].forEach(id=>el(id).addEventListener("input", checkPct));
+el("btn-recalc").addEventListener("click", recalcSuggested);
+
+/* ================= GENERATE & RENDER PLAN ================= */
+el("btn-generar").addEventListener("click", async ()=>{
+  const p = readPatientForm();
+  if(!p.kcalObjetivo){ recalcSuggested(); p.kcalObjetivo = Number(el("f-kcal").value); p.macros = {p:Number(el("f-pctp").value),g:Number(el("f-pctg").value),c:Number(el("f-pctc").value)}; }
+  currentPatientMeta = p;
+  currentPlan = generatePlan(p, p.duracion, null);
+  shoppingChecked = {};
+  renderPlan();
+  await autosaveDraft();
+});
+
+function planTotalsForDay(day){
+  const acc = nutZero();
+  day.meals.forEach(m=> NUTKEYS.forEach(k=> acc[k]+=(m.nut[k]||0)));
+  return roundNut(acc);
+}
+function weeklyAverageNut(){
+  const acc = nutZero();
+  currentPlan.forEach(day=> day.meals.forEach(m=> NUTKEYS.forEach(k=> acc[k]+=(m.nut[k]||0))));
+  const n = currentPlan.length||1;
+  NUTKEYS.forEach(k=> acc[k] = acc[k]/n);
+  return roundNut(acc);
+}
+// Badge extra según la situación clínica del paciente: muestra el nutriente que más importa vigilar
+function clinicalBadge(nut, condicion){
+  const lim = CLINICAL_LIMITS[condicion];
+  if(!lim) return "";
+  const labels = {sodio:["Sodio","mg"], potasio:["Potasio","mg"], fosforo:["Fósforo","mg"], azucar:["Azúcares","g"], gsat:["Grasa sat.","g"]};
+  let over = false;
+  const parts = Object.keys(lim).map(k=>{
+    if((nut[k]||0) > lim[k]) over = true;
+    return `${labels[k][0]} <b class="num">${nut[k]}${labels[k][1]}</b>`;
+  });
+  return `<span style="color:${over?'var(--danger)':'var(--muted)'}">${parts.join(" · ")}</span>`;
+}
+
+function renderPlan(){
+  const out = el("plan-output");
+  if(!currentPlan){ out.innerHTML=""; return; }
+  const p = currentPatientMeta;
+  let html = "";
+
+  html += `<div class="card">
+    <h2>Plan para ${escapeHtml(p.nombre)}</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="num-big num">${Math.round(p.kcalObjetivo)}</div><div class="lbl">kcal/día objetivo</div></div>
+      <div class="kpi"><div class="num-big num">${p.macros.p}/${p.macros.g}/${p.macros.c}</div><div class="lbl">% Prot / Grasa / HdC</div></div>
+      <div class="kpi"><div class="num-big num">${round1(calcIMC(p.peso,p.talla))}</div><div class="lbl">IMC actual (${imcLabel(calcIMC(p.peso,p.talla))})</div></div>
+    </div>
+    <div class="actions-bar">
+      <button class="btn secondary small" id="btn-regen-unlocked">↺ Regenerar no bloqueados</button>
+      <button class="btn small" id="btn-save-patient">💾 Guardar paciente</button>
+      <button class="btn secondary small" id="btn-pdf-paciente">📄 PDF paciente</button>
+      <button class="btn secondary small" id="btn-pdf-clinica">📋 PDF ficha clínica</button>
+    </div>
+  </div>`;
+
+  currentPlan.forEach((day, di)=>{
+    const tot = planTotalsForDay(day);
+    html += `<div class="day" data-day="${di}">
+      <div class="day-head">
+        <div class="day-num">${day.day}</div>
+        <div>Día ${day.day}</div>
+        <div class="day-totals num">${Math.round(tot.kcal)} kcal · P ${tot.prot}g · G ${tot.grasa}g · H ${tot.carb}g · Fibra ${tot.fibra}g · Na ${tot.sodio}mg · K ${tot.potasio}mg</div>
+      </div>`;
+    day.meals.forEach((m, mi)=>{
+      const badge = clinicalBadge(m.nut, currentPatientMeta.condicion);
+      html += `<div class="meal" data-day="${di}" data-meal="${mi}">
+        <div class="meal-head">
+          <span class="meal-slot">${slotLabel(m.slot)}</span>
+          <span class="meal-name">${m.custom?'<span class="star">★</span> ':''}${escapeHtml(m.name)}${m.warn?' <span title="No hay una opción que cumpla estrictamente el límite sugerido para esta situación clínica; revisar manualmente." style="cursor:help;">⚠️</span>':''}</span>
+          <span class="meal-kcal num">${m.nut.kcal} kcal</span>
+          <span class="meal-actions">
+            <span class="lock-icon" title="${m.locked?'Desbloquear':'Bloquear'}" data-act="lock">${m.locked?'🔒':'🔓'}</span>
+            <button class="btn small secondary" data-act="regen">↺</button>
+          </span>
+        </div>
+        <div class="macro-badges"><span>Prot <b class="num">${m.nut.prot}g</b></span><span>Grasa <b class="num">${m.nut.grasa}g</b></span><span>HdC <b class="num">${m.nut.carb}g</b></span><span>Fibra <b class="num">${m.nut.fibra}g</b></span>${badge?`<span>${badge}</span>`:""}</div>
+        <div class="ing-list">
+          ${m.ing.map((ing,ii)=>`<div class="ing-row"><span class="ing-name">${escapeHtml(ing[0])}</span><input type="number" class="num" value="${ing[1]}" data-ii="${ii}"><span style="color:var(--muted);font-size:12px;">g · ${escapeHtml(ing[2])}</span></div>`).join("")}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="card" id="shopping-card"></div>`;
+
+  out.innerHTML = html;
+  wirePlanEvents();
+  renderShoppingList();
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function wirePlanEvents(){
+  el("btn-regen-unlocked").onclick = async ()=>{
+    currentPlan = generatePlan(currentPatientMeta, currentPatientMeta.duracion, currentPlan);
+    renderPlan();
+    await autosaveDraft();
+    toast("Regenerado lo no bloqueado.");
+  };
+  el("btn-save-patient").onclick = savePatientFromPlan;
+  el("btn-pdf-paciente").onclick = ()=>exportPDF(false);
+  el("btn-pdf-clinica").onclick = ()=>exportPDF(true);
+
+  document.querySelectorAll(".meal .lock-icon").forEach(icon=>{
+    icon.addEventListener("click", (e)=>{
+      const mealDiv = e.target.closest(".meal");
+      const di = Number(mealDiv.dataset.day), mi = Number(mealDiv.dataset.meal);
+      currentPlan[di].meals[mi].locked = !currentPlan[di].meals[mi].locked;
+      renderPlan();
+      autosaveDraft();
+    });
+  });
+  document.querySelectorAll('.meal-actions button[data-act="regen"]').forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const mealDiv = e.target.closest(".meal");
+      const di = Number(mealDiv.dataset.day), mi = Number(mealDiv.dataset.meal);
+      const dist = mealDistribution(currentPatientMeta.comidas);
+      const slotDef = dist[mi];
+      const usage = {};
+      currentPlan.forEach(day=>day.meals.forEach(m=>{ if(m.recipeId) usage[m.recipeId]=(usage[m.recipeId]||0)+1; }));
+      const target = currentPatientMeta.kcalObjetivo * slotDef.pct;
+      currentPlan[di].meals[mi] = pickMeal(poolForSlot(slotDef.slot), target, slotDef.slot, currentPatientMeta, usage);
+      renderPlan();
+      autosaveDraft();
+    });
+  });
+  document.querySelectorAll(".ing-row input").forEach(inp=>{
+    inp.addEventListener("change", (e)=>{
+      const mealDiv = e.target.closest(".meal");
+      const di = Number(mealDiv.dataset.day), mi = Number(mealDiv.dataset.meal);
+      const ii = Number(e.target.dataset.ii);
+      const meal = currentPlan[di].meals[mi];
+      meal.ing[ii][1] = Number(e.target.value)||0;
+      if(!meal.customNut){
+        // recalculamos los nutrientes de verdad, sumando cada ingrediente contra la tabla de composición
+        const acc = nutZero();
+        meal.ing.forEach(i=> addNutScaled(acc, nutOf(i[0]), i[1]));
+        meal.nut = roundNut(acc);
+      }
+      renderPlan();
+      renderShoppingList();
+      autosaveDraft();
+    });
+  });
+}
+
+/* ================= SHOPPING LIST ================= */
+function computeShoppingList(){
+  const map = {};
+  currentPlan.forEach(day=>day.meals.forEach(meal=>meal.ing.forEach(ing=>{
+    const key = ing[0]+"|"+(ing[3]||"Otros");
+    if(!map[key]) map[key] = {name:ing[0], grams:0, cat:ing[3]||"Otros"};
+    map[key].grams += ing[1];
+  })));
+  return Object.values(map).sort((a,b)=> a.cat.localeCompare(b.cat) || a.name.localeCompare(b.name));
+}
+function renderShoppingList(){
+  const card = el("shopping-card");
+  if(!card) return;
+  const items = computeShoppingList();
+  const byCat = {};
+  items.forEach(it=>{ (byCat[it.cat] = byCat[it.cat]||[]).push(it); });
+  let html = `<h3>🛒 Lista de compras de la semana</h3><p class="hint">Tildá lo que ya tenés en casa.</p>`;
+  Object.keys(byCat).sort().forEach(cat=>{
+    html += `<div class="shop-cat"><h4>${escapeHtml(cat)}</h4>`;
+    byCat[cat].forEach(it=>{
+      const key = it.name+"|"+it.cat;
+      const checked = shoppingChecked[key] ? "checked" : "";
+      const doneClass = shoppingChecked[key] ? "done" : "";
+      html += `<label class="shop-item ${doneClass}" data-key="${escapeHtml(key)}"><input type="checkbox" ${checked}><span>${escapeHtml(it.name)} — ${Math.round(it.grams)} g</span></label>`;
+    });
+    html += `</div>`;
+  });
+  card.innerHTML = html;
+  card.querySelectorAll(".shop-item input").forEach(cb=>{
+    cb.addEventListener("change", (e)=>{
+      const key = e.target.closest(".shop-item").dataset.key;
+      shoppingChecked[key] = e.target.checked;
+      e.target.closest(".shop-item").classList.toggle("done", e.target.checked);
+    });
+  });
+}
+
+/* ================= PATIENTS TAB ================= */
+async function savePatientFromPlan(){
+  const p = currentPatientMeta;
+  const record = {
+    id: currentPatientId,
+    profesionalId: p.profesionalId,
+    nombre: p.nombre, sexo:p.sexo, edad:p.edad, peso:p.peso, talla:p.talla,
+    actividad:p.actividad, objetivo:p.objetivo, condicion:p.condicion, duracion:p.duracion,
+    tipoalim:p.tipoalim, comidas:p.comidas, exclusiones:p.exclusiones,
+    kcalObjetivo:p.kcalObjetivo, macros:p.macros,
+    borrador: currentPlan,
+    progreso: (await getPatientProgresoIfExists(currentPatientId)) || [{fecha: todayStr(), peso:p.peso, imc: round1(calcIMC(p.peso,p.talla))}],
+    updatedAt: Date.now()
+  };
+  currentPatientId = await store.savePatient(record);
+  toast("Paciente guardado.");
+}
+async function getPatientProgresoIfExists(id){
+  if(!id) return null;
+  const list = await store.listPatients();
+  const found = list.find(x=>x.id===id);
+  return found ? found.progreso : null;
+}
+async function autosaveDraft(){
+  if(!currentPatientId || !currentPlan) return;
+  const list = await store.listPatients();
+  const existing = list.find(x=>x.id===currentPatientId);
+  if(!existing) return;
+  existing.borrador = currentPlan;
+  existing.updatedAt = Date.now();
+  await store.savePatient(existing);
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+async function renderPatientsList(){
+  const list = await store.listPatients();
+  const box = el("patients-list");
+  if(list.length===0){ box.innerHTML = `<div class="empty">Todavía no guardaste ningún paciente. Generá un plan y tocá "Guardar paciente".</div>`; return; }
+  list.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  box.innerHTML = list.map(p=>`
+    <div class="patient-list-item" data-id="${p.id}">
+      <div class="pname">${escapeHtml(p.nombre)}</div>
+      <div class="pmeta">${p.edad} años · ${p.peso} kg · ${labelObjetivo(p.objetivo)}${profesionalNombre(p.profesionalId)?" · Atiende: "+escapeHtml(profesionalNombre(p.profesionalId)):""}</div>
+    </div>`).join("");
+  box.querySelectorAll(".patient-list-item").forEach(item=>{
+    item.addEventListener("click", ()=>openPatientDetail(item.dataset.id));
+  });
+}
+function labelObjetivo(o){ return {bajar:"Bajar de peso", mantener:"Mantener", subir:"Subir de peso"}[o]||o; }
+function profesionalNombre(id){ const p = (config.profesionales||[]).find(x=>x.id===id); return p?p.nombre:""; }
+
+async function openPatientDetail(id){
+  const list = await store.listPatients();
+  const p = list.find(x=>x.id===id);
+  if(!p) return;
+  currentPatientId = id;
+  el("patient-detail").style.display = "block";
+  el("pd-name").textContent = p.nombre;
+  const imc = round1(calcIMC(p.peso, p.talla));
+  el("pd-kpis").innerHTML = `
+    <div class="kpi"><div class="num-big num">${p.peso}</div><div class="lbl">kg (último registrado)</div></div>
+    <div class="kpi"><div class="num-big num">${imc}</div><div class="lbl">IMC (${imcLabel(imc)})</div></div>
+    <div class="kpi"><div class="num-big num">${Math.round(p.kcalObjetivo||0)}</div><div class="lbl">kcal objetivo</div></div>`;
+  el("pd-fecha").value = todayStr();
+  el("pd-peso").value = p.peso;
+  renderProgressChart(p.progreso||[], p.talla);
+
+  el("btn-add-control").onclick = async ()=>{
+    const fecha = el("pd-fecha").value || todayStr();
+    const peso = Number(el("pd-peso").value);
+    if(!peso) return;
+    p.progreso = p.progreso || [];
+    p.progreso.push({fecha, peso, imc: round1(calcIMC(peso, p.talla))});
+    p.peso = peso;
+    p.updatedAt = Date.now();
+    await store.savePatient(p);
+    toast("Control agregado.");
+    openPatientDetail(id);
+  };
+  el("btn-load-plan").onclick = ()=>{
+    if(!p.borrador){ toast("Este paciente no tiene un borrador de plan guardado."); return; }
+    currentPatientMeta = {
+      profesionalId:p.profesionalId, nombre:p.nombre, sexo:p.sexo, edad:p.edad, peso:p.peso, talla:p.talla, actividad:p.actividad,
+      objetivo:p.objetivo, condicion:p.condicion, duracion:p.duracion, tipoalim:p.tipoalim,
+      comidas:p.comidas, exclusiones:p.exclusiones, kcalObjetivo:p.kcalObjetivo, macros:p.macros
+    };
+    currentPlan = p.borrador;
+    fillPatientForm(p);
+    document.querySelector('nav.tabs button[data-tab="nuevo"]').click();
+    renderPlan();
+    toast("Borrador retomado.");
+  };
+  el("btn-del-patient").onclick = async ()=>{
+    if(!confirm("¿Eliminar a "+p.nombre+"? Esta acción no se puede deshacer.")) return;
+    await store.deletePatient(id);
+    el("patient-detail").style.display = "none";
+    currentPatientId = null;
+    renderPatientsList();
+    toast("Paciente eliminado.");
+  };
+}
+
+function renderProgressChart(progreso, talla){
+  const box = el("pd-chart");
+  if(!progreso || progreso.length===0){ box.innerHTML = `<div class="empty">Todavía no hay controles cargados.</div>`; return; }
+  const sorted = [...progreso].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const W=600,H=160,pad=30;
+  const pesos = sorted.map(s=>s.peso);
+  const min = Math.min(...pesos)-1, max = Math.max(...pesos)+1;
+  const xStep = sorted.length>1 ? (W-2*pad)/(sorted.length-1) : 0;
+  const pts = sorted.map((s,i)=>{
+    const x = pad + i*xStep;
+    const y = H-pad - ( (s.peso-min)/(max-min||1) )*(H-2*pad);
+    return [x,y];
+  });
+  const path = pts.map(p=>p.join(",")).join(" ");
+  const circles = pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--accent)"></circle><text x="${p[0]}" y="${H-8}" font-size="9" fill="var(--muted)" text-anchor="middle">${sorted[i].fecha.slice(5)}</text><text x="${p[0]}" y="${p[1]-8}" font-size="10" fill="var(--text)" text-anchor="middle">${sorted[i].peso}</text>`).join("");
+  box.innerHTML = `<svg class="progress-chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="${path}" fill="none" stroke="var(--accent)" stroke-width="2"></polyline>
+    ${circles}
+  </svg>`;
+}
+
+/* ================= MIS ALIMENTOS TAB ================= */
+el("btn-add-food").addEventListener("click", async ()=>{
+  const name = el("cf-nombre").value.trim();
+  if(!name){ toast("Poné un nombre para la preparación."); return; }
+  const ingLines = el("cf-ing").value.split("\n").map(l=>l.trim()).filter(Boolean);
+  const ing = ingLines.map(l=>{
+    const parts = l.split(",").map(s=>s.trim());
+    return [parts[0]||"Ingrediente", Number(parts[1])||0, parts[2]||"", "Mis alimentos"];
+  });
+  const food = {
+    name, pool: el("cf-pool").value, diet: el("cf-diet").value, gf:true, groups:[], unsuit:[],
+    kcal:Number(el("cf-kcal").value)||0, prot:Number(el("cf-prot").value)||0,
+    fat:Number(el("cf-fat").value)||0, carb:Number(el("cf-carb").value)||0, ing
+  };
+  await store.addCustomFood(food);
+  customFoods.push(food);
+  el("cf-nombre").value=""; el("cf-kcal").value=""; el("cf-prot").value=""; el("cf-fat").value=""; el("cf-carb").value=""; el("cf-ing").value="";
+  renderCustomFoodsList();
+  toast("Preparación guardada.");
+});
+
+function renderCustomFoodsList(){
+  const box = el("custom-foods-list");
+  if(customFoods.length===0){ box.innerHTML = `<div class="empty">Todavía no cargaste preparaciones propias.</div>`; return; }
+  box.innerHTML = `<h3>Tus preparaciones</h3>` + customFoods.map(f=>`
+    <div class="patient-list-item" data-id="${f.id}">
+      <div class="pname">★ ${escapeHtml(f.name)}</div>
+      <div class="pmeta">${f.kcal} kcal · ${f.pool==='dm'?'Desayuno/merienda':f.pool==='col'?'Colación':'Almuerzo/cena'}</div>
+      <button class="btn danger small" data-act="del">Borrar</button>
+    </div>`).join("");
+  box.querySelectorAll('button[data-act="del"]').forEach(btn=>{
+    btn.addEventListener("click", async (e)=>{
+      e.stopPropagation();
+      const id = e.target.closest(".patient-list-item").dataset.id;
+      await store.deleteCustomFood(id);
+      customFoods = customFoods.filter(f=>f.id!==id);
+      renderCustomFoodsList();
+    });
+  });
+}
+
+/* ================= TABLA DE COMPOSICIÓN (UI) ================= */
+function renderCompositionTable(filter){
+  const tbody = el("comp-tbody");
+  if(!tbody) return;
+  const q = (filter||"").trim().toLowerCase();
+  const names = Object.keys(INGREDIENTS_DB).sort((a,b)=>a.localeCompare(b));
+  const filtered = q ? names.filter(n=>n.toLowerCase().includes(q)) : names;
+  if(filtered.length===0){ tbody.innerHTML = `<tr><td colspan="18" style="color:var(--muted);padding:14px 6px;">Sin resultados para "${escapeHtml(filter)}".</td></tr>`; return; }
+  tbody.innerHTML = filtered.map(name=>{
+    const n = nutFromArr(INGREDIENTS_DB[name]);
+    return `<tr><td>${escapeHtml(name)}</td><td class="num">${n.kcal}</td><td class="num">${n.prot}</td><td class="num">${n.grasa}</td><td class="num">${n.gsat}</td><td class="num">${n.carb}</td><td class="num">${n.azucar}</td><td class="num">${n.fibra}</td><td class="num">${n.sodio}</td><td class="num">${n.potasio}</td><td class="num">${n.calcio}</td><td class="num">${n.hierro}</td><td class="num">${n.fosforo}</td><td class="num">${n.magnesio}</td><td class="num">${n.zinc}</td><td class="num">${n.folato}</td><td class="num">${n.vitA}</td><td class="num">${n.vitC}</td></tr>`;
+  }).join("");
+}
+el("comp-search").addEventListener("input", (e)=> renderCompositionTable(e.target.value));
+
+/* ================= CONFIG TAB ================= */
+function renderConfig(){
+  el("cfg-color").value = config.color||"#3F6B52";
+  if(config.logo){ el("cfg-logo-preview").src = config.logo; el("cfg-logo-preview").style.display="block"; }
+  renderProfesionalesList();
+}
+el("cfg-logo").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    config.logo = reader.result;
+    el("cfg-logo-preview").src = config.logo;
+    el("cfg-logo-preview").style.display="block";
+    await store.saveConfig(config);
+    toast("Logo guardado.");
+  };
+  reader.readAsDataURL(file);
+});
+el("btn-save-config").addEventListener("click", async ()=>{
+  config.color = el("cfg-color").value;
+  await store.saveConfig(config);
+  toast("Configuración guardada.");
+});
+
+function renderProfesionalesList(){
+  const box = el("profesionales-list");
+  const profs = config.profesionales||[];
+  if(profs.length===0){ box.innerHTML = `<div class="empty">Todavía no cargaste ningún profesional.</div>`; return; }
+  box.innerHTML = profs.map(p=>`
+    <div class="patient-list-item" data-id="${p.id}">
+      <div class="pname">${escapeHtml(p.nombre)}</div>
+      <div class="pmeta">${escapeHtml(p.matricula||"")}</div>
+      <button class="btn danger small" data-act="del-prof">Borrar</button>
+    </div>`).join("");
+  box.querySelectorAll('button[data-act="del-prof"]').forEach(btn=>{
+    btn.addEventListener("click", async (e)=>{
+      e.stopPropagation();
+      const id = e.target.closest(".patient-list-item").dataset.id;
+      config.profesionales = (config.profesionales||[]).filter(p=>p.id!==id);
+      await store.saveConfig(config);
+      renderProfesionalesList();
+      renderProfesionalSelect();
+      toast("Profesional eliminado.");
+    });
+  });
+}
+el("btn-add-prof").addEventListener("click", async ()=>{
+  const nombre = el("prof-nombre").value.trim();
+  if(!nombre){ toast("Poné al menos el nombre del profesional."); return; }
+  const matricula = el("prof-matricula").value.trim();
+  config.profesionales = config.profesionales||[];
+  config.profesionales.push({id:uid("pf"), nombre, matricula});
+  await store.saveConfig(config);
+  el("prof-nombre").value=""; el("prof-matricula").value="";
+  renderProfesionalesList();
+  renderProfesionalSelect();
+  toast("Profesional agregado.");
+});
+function renderProfesionalSelect(){
+  const sel = el("f-profesional");
+  const profs = config.profesionales||[];
+  const prevValue = sel.value;
+  if(profs.length===0){
+    sel.innerHTML = `<option value="">— Agregá un profesional en Configuración —</option>`;
+    return;
+  }
+  sel.innerHTML = profs.map(p=>`<option value="${p.id}">${escapeHtml(p.nombre)}${p.matricula?" — "+escapeHtml(p.matricula):""}</option>`).join("");
+  if(profs.some(p=>p.id===prevValue)) sel.value = prevValue;
+}
+function currentProfesional(){
+  const profs = config.profesionales||[];
+  const sel = el("f-profesional");
+  return profs.find(p=>p.id===sel.value) || profs[0] || {nombre:"", matricula:""};
+}
+
+/* ================= RESPALDO (exportar / importar) ================= */
+function downloadBlob(blob, filename){
+  if(downloadsCap){
+    return downloadsCap.save({filename, data:blob}).catch(err=>{ console.error(err); toast("No se pudo descargar el archivo."); });
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+el("btn-export-backup").addEventListener("click", async ()=>{
+  const data = {
+    app:"nutriplan", version:1, exportedAt:Date.now(),
+    config, patients: await store.listPatients(), customFoods: await store.listCustomFoods()
+  };
+  const blob = new Blob([JSON.stringify(data)], {type:"application/json"});
+  await downloadBlob(blob, "nutriplan_respaldo_"+todayStr()+".json");
+  toast("Respaldo exportado.");
+});
+el("btn-import-backup").addEventListener("click", ()=> el("backup-file").click());
+el("backup-file").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = "";
+  if(!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    if(data.app!=="nutriplan") throw new Error("formato");
+    const existing = await store.listPatients();
+    let added = 0;
+    for(const p of (data.patients||[])){
+      const cur = existing.find(x=>x.id===p.id);
+      if(!cur || (p.updatedAt||0) > (cur.updatedAt||0)){ await store.savePatient(p); added++; }
+    }
+    const curFoods = await store.listCustomFoods();
+    for(const f of (data.customFoods||[])){
+      if(!curFoods.some(x=>x.id===f.id)) await store.putCustomFood(f);
+    }
+    const inc = data.config || {};
+    config.profesionales = config.profesionales||[];
+    (inc.profesionales||[]).forEach(pf=>{ if(!config.profesionales.some(x=>x.id===pf.id)) config.profesionales.push(pf); });
+    if(!config.logo && inc.logo) config.logo = inc.logo;
+    if(inc.color && !config.logo) config.color = inc.color;
+    await store.saveConfig(config);
+    customFoods = await store.listCustomFoods();
+    renderProfesionalSelect(); renderConfig(); renderPatientsList();
+    toast("Respaldo importado ("+added+" paciente"+(added===1?"":"s")+" nuevos o actualizados).");
+  }catch(err){
+    console.error(err);
+    toast("El archivo no es un respaldo válido de NutriPlan.");
+  }
+});
+
+/* ================= PDF EXPORT ================= */
+async function exportPDF(clinica){
+  if(!currentPlan || !currentPatientMeta){ toast("Generá un plan primero."); return; }
+  if(!window.jspdf){ toast("No se pudo cargar el motor de PDF."); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 44;
+  const color = hexToRgb(config.color||"#3F6B52");
+  const p = currentPatientMeta;
+  const prof = currentProfesional();
+
+  // Portada
+  doc.setFillColor(color.r,color.g,color.b);
+  doc.rect(0,0,pageW,110,"F");
+  if(config.logo){
+    try{ doc.addImage(config.logo, undefined, margin, 20, 70, 70); }catch(e){}
+  }
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(20);
+  doc.text("Plan alimentario", config.logo?130:margin, 55);
+  doc.setFontSize(11);
+  doc.text(prof.nombre||"", config.logo?130:margin, 75);
+  if(prof.matricula) doc.text(prof.matricula, config.logo?130:margin, 90);
+
+  doc.setTextColor(30,30,30);
+  let y = 150;
+  doc.setFontSize(15);
+  doc.text("Paciente: "+p.nombre, margin, y); y+=22;
+  doc.setFontSize(11);
+  doc.text(`Sexo: ${p.sexo==='M'?'Masculino':'Femenino'}   Edad: ${p.edad}   Peso: ${p.peso} kg   Talla: ${p.talla} cm`, margin, y); y+=16;
+  doc.text(`Objetivo: ${labelObjetivo(p.objetivo)}   Duración: ${p.duracion} días   Tipo de alimentación: ${p.tipoalim}`, margin, y); y+=16;
+  doc.text(`kcal/día objetivo: ${Math.round(p.kcalObjetivo)}    Reparto: Prot ${p.macros.p}% / Grasa ${p.macros.g}% / HdC ${p.macros.c}%`, margin, y); y+=16;
+
+  if(clinica){
+    const tmb = calcTMB(p.sexo,p.peso,p.talla,p.edad);
+    const get = calcGET(tmb, p.actividad);
+    y += 10;
+    doc.setFontSize(12); doc.text("Ficha clínica — cálculo", margin, y); y+=18;
+    doc.setFontSize(11);
+    doc.text(`Fórmula: Mifflin-St Jeor. TMB: ${Math.round(tmb)} kcal.`, margin, y); y+=16;
+    doc.text(`Factor de actividad (${p.actividad}): GET = ${Math.round(get)} kcal.`, margin, y); y+=16;
+    doc.text(`Ajuste por objetivo (${labelObjetivo(p.objetivo)}): ${Math.round(p.kcalObjetivo)} kcal/día.`, margin, y); y+=16;
+    doc.text(`Situación clínica: ${p.condicion}.   Exclusiones: ${p.exclusiones.join(", ")||"ninguna"}.`, margin, y); y+=16;
+    doc.text(`IMC actual: ${round1(calcIMC(p.peso,p.talla))} (${imcLabel(calcIMC(p.peso,p.talla))}).`, margin, y); y+=16;
+    const avg = weeklyAverageNut();
+    doc.text(`Promedio diario del plan: Fibra ${avg.fibra}g · Sodio ${avg.sodio}mg · Potasio ${avg.potasio}mg · Grasa sat. ${avg.gsat}g · Azúcares ${avg.azucar}g.`, margin, y); y+=16;
+    doc.text("Nota: herramienta de apoyo profesional; no reemplaza el criterio clínico.", margin, y); y+=16;
+    doc.setFontSize(8); doc.setTextColor(120,120,120);
+    doc.text("Datos de composición de alimentos: valores de referencia aproximados (ARGENFOODS-UNLu / USDA FoodData Central).", margin, y); y+=12;
+    doc.setTextColor(30,30,30);
+  }
+
+  // Días
+  currentPlan.forEach(day=>{
+    doc.addPage();
+    let yy = margin;
+    doc.setFillColor(color.r,color.g,color.b);
+    doc.rect(0,0,pageW,34,"F");
+    doc.setTextColor(255,255,255); doc.setFontSize(14);
+    doc.text("Día "+day.day, margin, 23);
+    doc.setTextColor(30,30,30);
+    yy = 55;
+    day.meals.forEach(m=>{
+      if(yy>pageH-90){ doc.addPage(); yy=margin; }
+      doc.setFontSize(12);
+      doc.setFont(undefined,"bold");
+      doc.text(`${slotLabel(m.slot)} — ${m.name}  (${m.nut.kcal} kcal)`, margin, yy);
+      doc.setFont(undefined,"normal");
+      yy += 15;
+      doc.setFontSize(10);
+      m.ing.forEach(ing=>{
+        doc.text(`• ${ing[0]}: ${ing[1]} g (${ing[2]})`, margin+10, yy);
+        yy += 13;
+      });
+      if(clinica && !m.customNut){
+        doc.setFontSize(8.5); doc.setTextColor(100,100,100);
+        doc.text(`P ${m.nut.prot}g · G ${m.nut.grasa}g (sat ${m.nut.gsat}g) · HdC ${m.nut.carb}g (azúc ${m.nut.azucar}g) · Fibra ${m.nut.fibra}g · Na ${m.nut.sodio}mg · K ${m.nut.potasio}mg`, margin+10, yy);
+        yy += 12;
+        doc.setTextColor(30,30,30);
+      }
+      yy += 8;
+    });
+  });
+
+  // Lista de compras
+  doc.addPage();
+  let yy = margin;
+  doc.setFillColor(color.r,color.g,color.b);
+  doc.rect(0,0,pageW,34,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(14);
+  doc.text("Lista de compras", margin, 23);
+  doc.setTextColor(30,30,30);
+  yy = 55;
+  const items = computeShoppingList();
+  const byCat = {};
+  items.forEach(it=>{ (byCat[it.cat]=byCat[it.cat]||[]).push(it); });
+  Object.keys(byCat).sort().forEach(cat=>{
+    if(yy>pageH-60){ doc.addPage(); yy=margin; }
+    doc.setFontSize(12); doc.setFont(undefined,"bold");
+    doc.text(cat, margin, yy); yy+=16;
+    doc.setFont(undefined,"normal"); doc.setFontSize(10);
+    byCat[cat].forEach(it=>{
+      if(yy>pageH-40){ doc.addPage(); yy=margin; }
+      doc.text(`- ${it.name}: ${Math.round(it.grams)} g`, margin+8, yy);
+      yy+=13;
+    });
+    yy+=8;
+  });
+
+  const fname = (clinica?"ficha_clinica_":"plan_")+p.nombre.replace(/\s+/g,"_")+".pdf";
+  const blob = doc.output("blob");
+  if(downloadsCap){
+    try{
+      await downloadsCap.save({filename:fname, data:blob});
+      toast("PDF listo.");
+    }catch(err){
+      console.error(err);
+      if(err && err.code==="declined"){ toast("Descarga cancelada."); }
+      else { fallbackSave(doc,fname); }
+    }
+  } else {
+    fallbackSave(doc,fname);
+  }
+}
+function fallbackSave(doc, fname){
+  try{ doc.save(fname); toast("PDF generado."); }
+  catch(e){ console.error(e); toast("No se pudo descargar el PDF en este entorno."); }
+}
+function hexToRgb(hex){
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex||"#3F6B52");
+  return m ? {r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16)} : {r:63,g:107,b:82};
+}
+
+/* ================= INIT ================= */
+async function init(){
+  await store.init();
+  config = await store.getConfig();
+  customFoods = await store.listCustomFoods();
+  renderProfesionalSelect();
+  recalcSuggested();
+}
+init();
+
+/* ================= INSTALABLE (PWA) ================= */
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = el("btn-install");
+  if(btn) btn.style.display = "inline-block";
+});
+if(el("btn-install")){
+  el("btn-install").addEventListener("click", async ()=>{
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    el("btn-install").style.display = "none";
+  });
+}
+window.addEventListener("appinstalled", ()=>{
+  const btn = el("btn-install");
+  if(btn) btn.style.display = "none";
+  toast("App instalada.");
+});
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{ /* no disponible en este contexto, no pasa nada */ });
+  });
+}
+
+})();
+</script>
+</body>
+</html>
